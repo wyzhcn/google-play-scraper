@@ -119,6 +119,13 @@ class Scraper
         });
         $price = $crawler->filter('[itemprop="offers"] > [itemprop="price"]')->attr('content');
         $info['price'] = $price == '0' ? null : $price;
+        $full_price_section = $crawler->filter('jsl > .full-price');
+        $full_price = $full_price_section->count()?$full_price_section->text():0;
+        if ($full_price) {
+            $info['full_price'] = $full_price;
+        } else {
+            $info['full_price'] = null;
+        }
         $info['screenshots'] = $crawler->filter('[itemprop="screenshot"]')->each(function ($node) {
             return $this->getAbsoluteUrl($node->filter('img')->attr('src'));
         });
