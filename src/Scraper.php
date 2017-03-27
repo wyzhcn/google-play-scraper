@@ -120,7 +120,7 @@ class Scraper
         $price = $crawler->filter('[itemprop="offers"] > [itemprop="price"]')->attr('content');
         $info['price'] = $price == '0' ? null : $price;
         $full_price_section = $crawler->filter('jsl > .full-price');
-        $full_price = $full_price_section->count()?$full_price_section->text():0;
+        $full_price = $full_price_section->count()?$full_price_section->text():null;
         if ($full_price) {
             $info['full_price'] = $full_price;
         } else {
