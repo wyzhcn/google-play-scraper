@@ -117,7 +117,12 @@ class Scraper
         $info['categories'] = $crawler->filter('[itemprop="genre"]')->each(function ($node) {
             return $node->text();
         });
-        $price = $crawler->filter('[itemprop="offers"] > [itemprop="price"]')->attr('content');
+        $priceNode = $crawler->filter('[itemprop="offers"] > [itemprop="price"]');
+        if ($priceNode->count()) {
+            $price = $price_section->attr('content');
+        } else {
+            $price = null;
+        }
         $info['price'] = $price == '0' ? null : $price;
         $full_price_section = $crawler->filter('jsl > .full-price');
         $full_price = $full_price_section->count()?$full_price_section->text():null;
@@ -146,30 +151,12 @@ class Scraper
             $votes = 0;
         }
         $info['votes'] = $votes;
-        $info['last_updated'] = trim($crawler->filter('[itemprop="datePublished"]')->text());
-        $sizeNode = $crawler->filter('[itemprop="fileSize"]');
-        if ($sizeNode->count()) {
-            $size = trim($sizeNode->text());
-        } else {
-            $size = null;
-        }
-        $info['size'] = $size;
-        $downloadsNode = $crawler->filter('[itemprop="numDownloads"]');
-        if ($downloadsNode->count()) {
-            $downloads = trim($downloadsNode->text());
-        } else {
-            $downloads = null;
-        }
-        $info['downloads'] = $downloads;
-        $versionNode = $crawler->filter('[itemprop="softwareVersion"]');
-        if ($versionNode->count()) {
-            $version = trim($versionNode->text());
-        } else {
-            $version = null;
-        }
-        $info['version'] = $version;
-        $info['supported_os'] = trim($crawler->filter('[itemprop="operatingSystems"]')->text());
-        $info['content_rating'] = $crawler->filter('[itemprop="contentRating"]')->text();
+        $info['last_updated'] = $this->safeGet($crawler, '[itemprop="datePublished"]');
+        $info['size'] = $this->safeGet($crawler, '[itemprop="fileSize"]');
+        $info['downloads'] = $this->safeGet($crawler, '[itemprop="numDownloads"]');
+        $info['version'] = $this->safeGet($crawler, '[itemprop="softwareVersion"]');
+        $info['supported_os'] = $this->safeGet($crawler, '[itemprop="operatingSystems"]');
+        $info['content_rating'] = $this->safeGet($crawler, '[itemprop="contentRating"]');
         $whatsneNode = $crawler->filter('.recent-change');
         if ($whatsneNode->count()) {
             $info['whatsnew'] = implode("\n", $whatsneNode->each(function ($node) {
@@ -486,5 +473,15 @@ class Scraper
         }
 
         return $text;
+    }
+
+    protected function safeGet($crawler, $filter)
+    {
+        $node = $crawler->filter($filter);
+        if ($node->count()) {
+            return trim($node->text());
+        } else {
+            return null;
+        }
     }
 }
