@@ -119,7 +119,7 @@ class Scraper
         });
         $priceNode = $crawler->filter('[itemprop="offers"] > [itemprop="price"]');
         if ($priceNode->count()) {
-            $price = $price_section->attr('content');
+            $price = $priceNode->attr('content');
         } else {
             $price = null;
         }
