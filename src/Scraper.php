@@ -20,6 +20,63 @@ class Scraper
     protected $lang = 'en';
     protected $country = 'us';
 
+    protected $anchor = [
+        'last_updated' => [
+            'en' => 'Updated',
+            'zh' => '更新日期',
+            'ja' => '更新日',
+            'ko' => '업데이트 날짜',
+        ],
+        'size' => [
+            'en' => 'Size',
+            'zh' => '大小',
+            'ja' => 'サイズ',
+            'ko' => '크기',
+        ],
+        'downloads' => [
+            'en' => 'Installs',
+            'zh' => '安装次数',
+            'ja' => 'インストール',
+            'ko' => '설치 수',
+        ],
+        'version' => [
+            'en' => 'Current Version',
+            'zh' => '当前版本',
+            'ja' => '現在のバージョン',
+            'ko' => '현재 버전',
+        ],
+        'supported_os' => [
+            'en' => 'Requires Android',
+            'zh' => 'Android 系统版本要求',
+            'ja' => 'Android 要件',
+            'ko' => '필요한 Android 버전',
+        ],
+        'content_rating' => [
+            'en' => 'Content Rating',
+            'zh' => '内容分级',
+            'ja' => 'コンテンツのレーティング',
+            'ko' => '콘텐츠 등급',
+        ],
+        'author' => [
+            'en' => 'Offered By',
+            'zh' => '提供者',
+            'ja' => '提供元',
+            'ko' => '제공',
+        ],
+        'author_link' => [
+            'en' => 'Visit website',
+            'zh' => '访问网站',
+            'ja' => 'ウェブサイトにアクセス',
+            'ko' => '웹사이트 방문',
+        ],
+        'whatsnew' => [
+            'en' => "What's New",
+            'zh' => '新变化',
+            'ja' => '新機能',
+            'ko' => '변경사항',
+        ],
+    ];
+
     public function __construct(GuzzleClientInterface $guzzleClient = null)
     {
         $this->client = new Client();
@@ -95,7 +152,7 @@ class Scraper
         );
     }
 
-    public function getApp($id, $lang = null, $country = null)
+    public function getAppVersionOne($id, $lang = null, $country = null)
     {
         $lang = $lang === null ? $this->lang : $lang;
         $country = $country === null ? $this->country : $country;
@@ -483,5 +540,127 @@ class Scraper
         } else {
             return null;
         }
+    }
+
+    public function getApp($id, $lang = null, $country = null)
+    {
+        $lang = $lang === null ? $this->lang : $lang;
+        $country = $country === null ? $this->country : $country;
+
+        $params = array(
+            'id' => $id,
+            'hl' => $lang,
+            'gl' => $country,
+        );
+        $crawler = $this->request(array('apps', 'details'), $params);
+
+        $info = array();
+        $info['id'] = $id;
+        $info['url'] = $crawler->filter('[property="og:url"]')->attr('content');
+        $info['image'] = $this->getAbsoluteUrl($crawler->filter('[itemprop="image"]')->attr('src'));
+        $info['title'] = $crawler->filter('[itemprop="name"] > span')->text();
+
+        $info['categories'] = $crawler->filter('[itemprop="genre"]')->each(function ($node) {
+            return $node->text();
+        });
+        $priceNode = $crawler->filter('[itemprop="offers"] > [itemprop="price"]');
+        if ($priceNode->count()) {
+            $price = $priceNode->attr('content');
+        } else {
+            $price = null;
+        }
+        $info['price'] = $price == '0' ? null : $price;
+        $full_price_section = $crawler->filter('jsl > .full-price');
+        $full_price = $full_price_section->count()?$full_price_section->text():null;
+        if ($full_price) {
+            $info['full_price'] = $full_price;
+        } else {
+            $info['full_price'] = null;
+        }
+
+        $info['screenshots'] = $crawler->filterXPath('.//img[@class="T75of lxGQyd"][@itemprop="image"][@alt]')->each(function ($node) {
+            return $this->getAbsoluteUrl($node->filter('img')->attr('src'));
+        });
+        $desc = $this->cleanDescription($crawler->filter('[itemprop="description"] > content > div'));
+        $info['description'] = $desc['text'];
+        $info['description_html'] = $desc['html'];
+
+        $ratingNode = $crawler->filterXPath(".//div[@class='K9wGie']");
+        $rating = $ratingNode->filterXPath('.//div[@class="BHMmbe"]')->text();
+        $info['rating'] = $rating;
+        $votes = $ratingNode->filterXPath('.//span[@class="EymY4b"]/span[@aria-label]')->text();
+        $info['votes'] = $votes;
+
+        $more_info = $crawler->filterXPath('.//div[@class="hAyfc"]');
+        $info['last_updated'] = $this->safeGetMoreInfo($more_info, $lang, 'last_updated');
+        $info['size'] = $this->safeGetMoreInfo($more_info, $lang, 'size');
+        $info['downloads'] = $this->safeGetMoreInfo($more_info, $lang, 'downloads');
+        $info['version'] = $this->safeGetMoreInfo($more_info, $lang, 'version');
+        $info['supported_os'] = $this->safeGetMoreInfo($more_info, $lang, 'supported_os');
+        $info['content_rating'] = $this->safeGetMoreInfo($more_info, $lang, 'content_rating');
+        $info['author'] = $this->safeGetMoreInfo($more_info, $lang, 'author');
+
+        $info['author_link'] = $crawler->filterXPath('.//a[@class="hrTbp "]')->reduce(function($node) use ($lang){
+            return str_contains($node->text(), $this->anchor['author_link'][$lang]);
+        })->attr('href');
+
+        $whatsneNode = $crawler->filterXPath('.//div[@class="W4P4ne "]')->reduce(function ($node) use ($lang){
+            /* @var Crawler $node*/
+            return str_contains($node->filterXPath('div/div[@class="wSaTQd"]')->text(), $this->anchor['whatsnew'][$lang]);
+        })->filterXPath('div/div/div[@itemprop="description"]/content');
+        if ($whatsneNode->count()) {
+            $info['whatsnew'] = implode("\n", $whatsneNode->each(function ($node) {
+                return $node->text();
+            }));
+        } else {
+            $info['whatsnew'] = null;
+        }
+
+        $videoNode = $crawler->filterXPath('.//button[@data-trailer-url]');
+        if ($videoNode->count()) {
+            $info['video_link'] = $this->getAbsoluteUrl($videoNode->attr('data-trailer-url'));
+            $info['video_image'] = $this->getAbsoluteUrl($videoNode->filterXPath('button/../../img')->attr('src'));
+        } else {
+            $info['video_link'] = null;
+            $info['video_image'] = null;
+        }
+
+//        dd($info);
+
+        return $info;
+    }
+
+    /**
+     * @param Crawler $more_info
+     * @param $lang
+     * @param $field
+     * @return null
+     */
+    protected function safeGetMoreInfo($more_info, $lang, $field){
+
+        $fieldNode = $more_info->reduce(function ($node) use ($lang, $field){
+            /* @var Crawler $node*/
+            if ($node->filterXPath("div/div")->count() > 0){
+                return str_contains($node->filterXPath("div/div")->text(), $this->anchor[$field][$lang]);
+            }
+        });
+
+        if ($fieldNode->count() > 0){
+            $field = $fieldNode->filterXPath('div/span/div/span[@class="htlgb"]')->getNode(0);
+            $text = '';
+            foreach ($field->childNodes as $childNode) {
+                if ($childNode instanceof \DOMText){
+                    $text .= $childNode->wholeText. ' ';
+                }elseif ($childNode instanceof \DOMElement){
+                    foreach ($childNode->childNodes as $_chileNode){
+                        if ($_chileNode instanceof \DOMText) {
+                            $text .= $_chileNode->wholeText. ' ';
+                        }
+                    }
+                }
+            }
+            return trim($text);
+        }
+        return null;
     }
 }
