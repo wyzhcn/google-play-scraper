@@ -17,7 +17,7 @@ class Scraper
     protected $client;
     protected $delay = 1000;
     protected $lastRequestTime;
-    protected $lang = 'en';
+    protected $lang = 'en_US';
     protected $country = 'us';
 
     protected $anchor = [
