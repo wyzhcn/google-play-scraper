@@ -600,9 +600,10 @@ class Scraper
         $info['content_rating'] = $this->safeGetMoreInfo($more_info, $lang, 'content_rating');
         $info['author'] = $this->safeGetMoreInfo($more_info, $lang, 'author');
 
-        $info['author_link'] = $crawler->filterXPath('.//a[@class="hrTbp "]')->reduce(function($node) use ($lang){
+        $author_link = $crawler->filterXPath('.//a[@class="hrTbp "]')->reduce(function($node) use ($lang){
             return str_contains($node->text(), $this->anchor['author_link'][$lang]);
-        })->attr('href');
+        });
+        $info['author_link'] = $author_link->count()>0 ? $author_link->attr('href') : null;
 
         $whatsneNode = $crawler->filterXPath('.//div[@class="W4P4ne "]')->reduce(function ($node) use ($lang){
             /* @var Crawler $node*/
