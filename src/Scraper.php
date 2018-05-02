@@ -595,10 +595,15 @@ class Scraper
         $info['description_html'] = $desc['html'];
 
         $ratingNode = $crawler->filterXPath(".//div[@class='K9wGie']");
-        $rating = $ratingNode->filterXPath('.//div[@class="BHMmbe"]')->text();
-        $info['rating'] = $rating;
-        $votes = $ratingNode->filterXPath('.//span[@class="EymY4b"]/span[@aria-label]')->text();
-        $info['votes'] = $votes;
+        if ($ratingNode->count() > 0){
+            $rating = $ratingNode->filterXPath('.//div[@class="BHMmbe"]')->text();
+            $info['rating'] = $rating;
+            $votes = $ratingNode->filterXPath('.//span[@class="EymY4b"]/span[@aria-label]')->text();
+            $info['votes'] = $votes;
+        }else{
+            $info['rating'] = null;
+            $info['votes'] = null;
+        }
 
         $more_info = $crawler->filterXPath('.//div[@class="hAyfc"]');
         $info['last_updated'] = $this->safeGetMoreInfo($more_info, $lang, 'last_updated');
