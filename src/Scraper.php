@@ -198,7 +198,7 @@ class Scraper
             $info['full_price'] = null;
         }
         $info['screenshots'] = $crawler->filter('[itemprop="screenshot"]')->each(function ($node) {
-            return $this->getAbsoluteUrl($node->filter('img')->attr('src'));
+            return $this->getAbsoluteUrl($node->filter('img')->attr('data-src'));
         });
         $desc = $this->cleanDescription($crawler->filter('[itemprop="description"] > div'));
         $info['description'] = $desc['text'];
