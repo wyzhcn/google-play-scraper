@@ -588,7 +588,8 @@ class Scraper
         }
 
         $info['screenshots'] = $crawler->filterXPath('.//img[@class="T75of lxGQyd"][@itemprop="image"][@alt]')->each(function ($node) {
-            return $this->getAbsoluteUrl($node->filter('img')->attr('src'));
+            $src = $node->attr('data-src') ?: $node->attr('src');
+            return $this->getAbsoluteUrl($src);
         });
         $desc = $this->cleanDescription($crawler->filter('[itemprop="description"] > content > div'));
         $info['description'] = $desc['text'];
