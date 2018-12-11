@@ -587,10 +587,19 @@ class Scraper
             $info['full_price'] = null;
         }
 
-        $info['screenshots'] = $crawler->filterXPath('.//img[@class="T75of lxGQyd"][@itemprop="image"][@alt]')->each(function ($node) {
-            $src = $node->attr('data-src') ?: $node->attr('src');
-            return $this->getAbsoluteUrl($src);
+        $info['screenshots'] = $crawler->filterXPath('.//button/img[@itemprop="image"]')->each(function ($node) {
+            $url = $node->filter('img')->attr('src');
+            if (filter_var($url, FILTER_VALIDATE_URL)) {
+                return $this->getAbsoluteUrl($url);
+            }
+            $url = $node->filter('img')->attr('data-src');
+            if (filter_var($url, FILTER_VALIDATE_URL)) {
+                return $this->getAbsoluteUrl($url);
+            }
+
+            return '';
         });
+
         $desc = $this->cleanDescription($crawler->filter('[itemprop="description"] > content > div'));
         $info['description'] = $desc['text'];
         $info['description_html'] = $desc['html'];
